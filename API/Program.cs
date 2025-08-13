@@ -1,3 +1,4 @@
+using Core.Interfaces;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +11,8 @@ builder.Services.AddDbContext<StoreContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+//AddScoped means service lives as long as http request
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
 var app = builder.Build();
 
 app.UseHttpsRedirection();
