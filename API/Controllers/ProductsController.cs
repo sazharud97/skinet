@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Core.Entities;
+using Core.Interfaces;
 using Infrastructure.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -10,27 +11,21 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ProductsController : ControllerBase
+public class ProductsController(IProductRepository repo) : ControllerBase
 {
-    private readonly StoreContext context;
-
-    public ProductsController(StoreContext context)
-    {
-        this.context = context;
-    }
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
+    public async Task<ActionResult<IReadOnlyList<Product>>> GetProducts()
     {
         // StoreContext returns all products in db
         // adding products from dbset to list
-        return await context.Products.ToListAsync();
+        return Ok(await repo.GetProductsAsync());
     }
 
     [HttpGet("{id:int}")] // e.g. api/products/2 getting prod by id
     public async Task<ActionResult<Product>> GetProduct(int id)
     {
         // getting product by id
-        var product = await context.Products.FindAsync(id);
+        var product = await repo.GetProductByIdAsync(id);
         if (product == null) return NotFound();
         return product;
     }
@@ -42,9 +37,15 @@ public class ProductsController : ControllerBase
     public async Task<ActionResult<Product>> CreateProduct(Product product)
     {
         //adding new product to context/dbset
-        context.Products.Add(product);
-        await context.SaveChangesAsync();
-        return product;
+        repo.AddProduct(product);
+        if (await repo.SaveChangesAsync())
+        {
+            return CreatedAtAction("GetProduct", new { id = product.Id }, product);
+        }
+        else
+        {
+            return BadRequest("Issue creating product");
+        }
     }
 
     [HttpPut("{id:int}")]
