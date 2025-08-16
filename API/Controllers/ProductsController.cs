@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Reflection.Metadata.Ecma335;
 using Core.Entities;
 using Core.Interfaces;
 using Infrastructure.Data;
@@ -54,25 +55,36 @@ public class ProductsController(IProductRepository repo) : ControllerBase
         if (product.Id != id || !ProductExists(id))
             return BadRequest("Failed to update product");
 
-        context.Entry(product).State = EntityState.Modified;
-        await context.SaveChangesAsync();
-        return NoContent();
+        if (await repo.SaveChangesAsync())
+        {
+            return NoContent();
+        }
+        else
+        {
+            return BadRequest("Issue updating product");
+        }
     }
 
     [HttpDelete("{id:int}")]
     public async Task<ActionResult> DeleteProduct(int id)
     {
-        var product = await context.Products.FindAsync(id);
+        var product = await repo.GetProductByIdAsync(id);
         if (product == null) return NotFound();
-        context.Products.Remove(product);
-        await context.SaveChangesAsync();
-        return NoContent();
+        repo.DeleteProduct(product);
+        if (await repo.SaveChangesAsync())
+        {
+            return NoContent();
+        }
+        else
+        {
+            return BadRequest("Issue deleting product");
+        }
     }
 
     // these bool functions are still weird to me
     // true if any existing product has same id as passed param
     private bool ProductExists(int id)
     {
-        return context.Products.Any(x => x.Id == id);
+        return repo.ProductExists(id);
     }
 }
